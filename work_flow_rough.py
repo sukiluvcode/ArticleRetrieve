@@ -1,3 +1,7 @@
+"""
+Deal with data, filter the needed one.
+
+"""
 import re
 import json
 import time
