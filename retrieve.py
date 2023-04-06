@@ -11,6 +11,7 @@ def download(doi, file_name):
     file_path = os.path.join(cwd, f"Publication/{file_name}.html")
     my_file = open(file_path, 'wb')
     downloader.get_html_from_doi(doi=doi, writefile=my_file, mode="rsc")
+    my_file.close()
 
 with open("doi/RSCdoi&csd_name.csv", encoding="utf-8") as f:
     RSC = pd.read_csv(f, index_col=0)
