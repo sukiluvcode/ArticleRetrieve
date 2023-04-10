@@ -5,3 +5,6 @@ doi
 Publication
 __pycache__
 .Ds_Store
+articles
+mof_articles
+test

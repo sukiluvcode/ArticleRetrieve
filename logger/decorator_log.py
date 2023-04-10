@@ -22,9 +22,3 @@ def log_decorator(func):
         return result
 
     return wrapper
-
-@log_decorator
-def add(a, b):
-    return a + b
-
-add(4, 6)

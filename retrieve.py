@@ -1,11 +1,14 @@
 """
-retrieve articles from elsevier, wiley, springer nature, science, rsc, not include acs specifically.
-wiley and aaas for some reason are yet not supported. (breifly saying, can render in browser, however failed in python)
+retrieve articles from elsevier, springer nature rsc, not include acs specifically.
+recommand set interval to 1s for each retrieve isntance call.
+wiley and aaas articles are hard to download, they are needs cookies.
 """
 import os
 import re
 import time
 import logging
+import subprocess
+import random
 import pandas as pd
 from downloader.articledownloader import ArticleDownloader
 from config.config import get_config
@@ -22,6 +25,13 @@ formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+# anti anti crawler
+agent_list = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:54.0) Gecko/20100101 Firefox/54.0",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15"
+]
 
 class Retrieve:
     """
@@ -61,10 +71,21 @@ class Retrieve:
         if publisher is None:
             return None
 
-        if publisher == ("acs" or "aaas"):
+        if publisher == "acs":
             logger.info(
                 f"sorry, scrawler is forbidden in {publisher}")
             return None
+
+        if publisher == "aaas":
+            base_url = "https://doi.org/"
+            url = base_url + self.doi
+            abs_file_path = f"{os.path.join(self.download_loc, file_name)}.html"
+            curl(random.choice(agent_list), url, abs_file_path)
+            if validation(abs_file_path):
+                logger.info(f"successfully download {self.doi} from {publisher}, located at {os.path.join(self.download_loc, file_name)}.html")
+            else:
+               logger.info(f"sorry, {os.path.join(self.download_loc, file_name)}.html is empty, something went wrong") 
+            return None  
 
         if publisher == "elsevier":
             downloader = ArticleDownloader(els_api_key=els_api_key)
@@ -75,19 +96,18 @@ class Retrieve:
             if validation(f"{os.path.join(self.download_loc, file_name)}.xml"):
                 logger.info(f"successfully download {self.doi} from {publisher}, located at {os.path.join(self.download_loc, file_name)}.xml")
             else:
-                logger.info(f"sorry, {os.path.join(self.download_loc, file_name)}.xml is empty, something went wrong") 
+                logger.info(f"sorry, {os.path.join(self.download_loc, file_name)}.xml is empty, something went wrong")
             return None 
 
         if publisher == "wiley":
-            downloader = ArticleDownloader()
-            my_file = open(f"{self.download_loc}/{file_name}.xml", 'wb')
-            downloader.get_xml_from_doi(
-                doi=self.doi, writefile=my_file, mode=publisher)
-            my_file.close()
-            if validation(f"{os.path.join(self.download_loc, file_name)}.xml"):
+            base_url = "https://onlinelibrary.wiley.com/doi/full-xml/"
+            url = base_url + self.doi
+            abs_file_path = f"{os.path.join(self.download_loc, file_name)}.xml"
+            curl(random.choice(agent_list), url, abs_file_path)
+            if validation(abs_file_path):
                 logger.info(f"successfully download {self.doi} from {publisher}, located at {os.path.join(self.download_loc, file_name)}.xml")
             else:
-                logger.info(f"sorry, {os.path.join(self.download_loc, file_name)}.xml is empty, something went wrong") 
+               logger.info(f"sorry, {os.path.join(self.download_loc, file_name)}.xml is empty, something went wrong") 
             return None 
 
         if publisher == 'springer':
@@ -121,9 +141,13 @@ def validation(abs_file_path):
             return False
         return True
 
-# doi = "10.1016/j.mtcomm.2022.104823"
-# root, _ = os.path.split(__file__)
-# loc = root + "/articles"
-# name = "1"
-# retrieve = Retrieve(doi, loc)
-# retrieve.download(name)
+def curl(user_agent, url, abs_file_path):
+    subprocess.run(["curl", "-L", "-H", f"User-Agent: {user_agent}", "-o", abs_file_path, url], check=True)
+
+doi = "10.1002/slct.201902017"
+root, _ = os.path.split(__file__)
+loc = root + "/articles"
+name = "1"
+retrieve = Retrieve(doi, loc)
+retrieve.download(name)
+# TODO: the curl not works so well, maybe need to use the headless google chrome.
